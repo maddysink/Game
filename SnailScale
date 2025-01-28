@@ -1,0 +1,126 @@
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+
+const SnailScaleGame = () => {
+  const [gameStarted, setGameStarted] = useState(false);
+  const [snail, setSnail] = useState({ x: 250, y: 250, size: 30 });
+  const [dots, setDots] = useState(
+    Array.from({ length: 20 }, () => ({ x: Math.random() * 480, y: Math.random() * 480, color: Math.random() > 0.4 ? "red" : "green" }))
+  );
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(30);
+
+  useEffect(() => {
+    if (gameStarted && timeLeft > 0) {
+      const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
+      return () => clearInterval(timer);
+    }
+  }, [gameStarted, timeLeft]);
+
+  const handleStart = () => {
+    setGameStarted(true);
+    setScore(0);
+    setTimeLeft(30);
+    setSnail({ x: 250, y: 250, size: 30 });
+    setDots(
+      Array.from({ length: 20 }, () => ({ x: Math.random() * 480, y: Math.random() * 480, color: Math.random() > 0.4 ? "red" : "green" }))
+    );
+  };
+
+  const handleKeyDown = (e) => {
+    if (!gameStarted) return;
+
+    const step = 20;
+    setSnail((prev) => {
+      const newX = e.key === "ArrowRight" ? prev.x + step : e.key === "ArrowLeft" ? prev.x - step : prev.x;
+      const newY = e.key === "ArrowDown" ? prev.y + step : e.key === "ArrowUp" ? prev.y - step : prev.y;
+      return {
+        ...prev,
+        x: Math.max(0, Math.min(480, newX)),
+        y: Math.max(0, Math.min(480, newY)),
+      };
+    });
+  };
+
+  useEffect(() => {
+    const checkCollision = () => {
+      dots.forEach((dot, index) => {
+        const distance = Math.sqrt((snail.x - dot.x) ** 2 + (snail.y - dot.y) ** 2);
+        if (distance < snail.size / 2 + 10) {
+          const isGreen = dot.color === "green";
+          setScore((prev) => prev + (isGreen ? 1 : -1));
+          setSnail((prev) => ({ ...prev, size: Math.max(10, prev.size + (isGreen ? 5 : -5)) }));
+          setDots((prevDots) => {
+            const newDots = [...prevDots];
+            newDots[index] = { x: Math.random() * 480, y: Math.random() * 480, color: Math.random() > 0.4 ? "red" : "green" };
+            return newDots;
+          });
+        }
+      });
+    };
+
+    checkCollision();
+  }, [snail, dots]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [gameStarted]);
+
+  return (
+    <div className="h-screen w-screen bg-purple-200 flex items-center justify-center">
+      {!gameStarted ? (
+        <div className="text-center">
+          <h1 className="font-Bauhaus text-4xl text-purple-700 mb-4">Snail Scale</h1>
+          <button
+            className="bg-purple-500 text-white text-xl font-bold py-3 px-6 rounded-lg shadow-lg"
+            onClick={handleStart}
+          >
+            Tap to Start
+          </button>
+        </div>
+      ) : (
+        <div className="relative w-[500px] h-[500px] bg-green-100 border-4 border-green-700">
+          <motion.div
+            className="absolute bg-purple-700 rounded-full"
+            style={{
+              width: snail.size,
+              height: snail.size,
+              top: snail.y,
+              left: snail.x,
+            }}
+          ></motion.div>
+
+          {dots.map((dot, index) => (
+            <motion.div
+              key={index}
+              className={`absolute rounded-full ${dot.color === "green" ? "bg-green-500" : "bg-red-500"}`}
+              style={{ width: 20, height: 20, top: dot.y, left: dot.x }}
+            ></motion.div>
+          ))}
+
+          <div className="absolute top-0 left-0 w-full flex justify-between p-2 text-lg font-bold text-green-900">
+            <span>Score: {score}</span>
+            <span>Time: {timeLeft}s</span>
+          </div>
+
+          {timeLeft === 0 && (
+            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white text-2xl font-bold">
+              <div>
+                {score >= 10 ? "You Win!" : "Game Over!"} <br />
+                <button
+                  className="mt-4 bg-purple-500 py-2 px-4 rounded-lg shadow-lg"
+                  onClick={() => setGameStarted(false)}
+                >
+                  Play Again
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default SnailScaleGame;
